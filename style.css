@@ -129,15 +129,16 @@ input:focus, select:focus { border-color: var(--accent); }
 
 /* Grid View Styles */
 .grid-wrapper {
-  display: none; width: 100%; height: 100%;
+  display: none; width: 100%;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 24px; align-content: flex-start;
+  padding: 10px;
 }
 .grid-item {
   background: var(--bg-panel); box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
 }
-.grid-item canvas { width: 100%; height: auto; display: block; }
+.grid-item img, .grid-item canvas { width: 100%; height: auto; display: block; }
 .grid-item-info {
   padding: 12px; border-top: 1px solid var(--border); font-size: 13px; text-align: center; font-weight: 500;
 }
@@ -148,3 +149,123 @@ input:focus, select:focus { border-color: var(--accent); }
   .sidebar { width: 100%; height: 300px; border-right: none; border-bottom: 1px solid var(--border); }
   .preview-area { padding: 20px; align-items: flex-start; }
 }
+
+/* ------------------- Export Dropdown ------------------- */
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu {
+  display: none; position: absolute; right: 0; top: 100%; margin-top: 5px;
+  background-color: var(--bg-panel); min-width: 240px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15); border-radius: 6px; z-index: 100;
+  border: 1px solid var(--border); overflow: hidden;
+}
+.dropdown-menu.show { display: block; animation: fadeIn 0.2s; }
+.dropdown-menu a {
+  color: var(--text-primary); padding: 12px 16px; text-decoration: none;
+  display: block; font-size: 14px; transition: background 0.2s;
+}
+.dropdown-menu a:hover { background-color: var(--bg-app); }
+.dropdown-divider { border: 0; border-top: 1px solid var(--border); margin: 0; }
+.arrow { font-size: 10px; margin-left: 4px; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ------------------- Progress Modal ------------------- */
+.progress-modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  display: flex; justify-content: center; align-items: center; z-index: 9999;
+}
+.progress-modal-content {
+  background: var(--bg-panel); padding: 30px; border-radius: 12px;
+  width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+}
+.progress-spinner {
+  width: 40px; height: 40px; border: 4px solid var(--border);
+  border-top: 4px solid var(--text-primary); border-radius: 50%;
+  animation: spin 1s linear infinite; margin: 0 auto 15px;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.progress-bar-container {
+  width: 100%; height: 8px; background: var(--bg-app); border-radius: 4px;
+  margin: 20px 0; overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; background: var(--text-primary); width: 0%;
+  transition: width 0.3s;
+}
+
+/* ------------------- Table Drawer ------------------- */
+.workspace-right-container {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-app);
+}
+.table-drawer {
+  background: var(--bg-panel); border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; transition: height 0.3s ease;
+  height: 40%; min-height: 250px; flex-shrink: 0; z-index: 5;
+}
+.table-drawer.collapsed { height: 45px; min-height: 45px; overflow: hidden; }
+.drawer-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-panel);
+}
+.drawer-title-group { display: flex; align-items: center; gap: 10px; }
+.drawer-actions { display: flex; align-items: center; gap: 10px; }
+.record-badge {
+  background: var(--text-primary); color: var(--bg-panel);
+  padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;
+}
+.toggle-drawer-btn { font-size: 14px; transition: transform 0.3s; }
+.collapsed .toggle-drawer-btn { transform: rotate(180deg); }
+.danger-btn { color: #e53e3e; border-color: #fc8181; }
+.danger-btn:hover { background: #fff5f5 !important; }
+[data-theme="dark"] .danger-btn:hover { background: #742a2a !important; }
+
+/* ------------------- Table Search ------------------- */
+.table-search-container {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; background: var(--bg-app);
+}
+#table-search-input {
+  flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--bg-panel); color: var(--text-primary);
+  font-size: 14px; outline: none;
+}
+#table-search-input:focus { border-color: var(--text-primary); box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2); }
+.clear-search-btn {
+  background: none; border: none; color: #a0aec0; cursor: pointer; font-size: 16px;
+}
+.clear-search-btn:hover { color: var(--text-primary); }
+
+/* ------------------- Data Table ------------------- */
+.drawer-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.table-scroll-container { flex: 1; overflow-y: auto; overflow-x: auto; }
+.data-table {
+  width: 100%; border-collapse: collapse; min-width: 600px;
+}
+.data-table th, .data-table td {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  text-align: left; font-size: 13px;
+}
+.data-table th {
+  background: var(--bg-panel); font-weight: 600; position: sticky; top: 0; z-index: 2;
+  box-shadow: 0 1px 0 var(--border);
+}
+.data-table tbody tr:hover { background: var(--bg-app); }
+.data-table tr.active-row { background: rgba(49, 130, 206, 0.1); }
+.data-table input, .data-table select {
+  width: 100%; padding: 4px 8px; border: 1px solid transparent;
+  border-radius: 4px; background: transparent; color: var(--text-primary);
+  font-family: inherit; font-size: 13px; outline: none; transition: border 0.2s;
+}
+.data-table input:focus, .data-table select:focus {
+  border: 1px solid var(--border); background: var(--bg-panel);
+}
+.data-table input:hover, .data-table select:hover { border: 1px solid var(--border); }
+.btn-icon {
+  background: none; border: none; color: #e53e3e; cursor: pointer;
+  padding: 4px; border-radius: 4px; transition: background 0.2s;
+}
+.btn-icon:hover { background: #fed7d7; }
+[data-theme="dark"] .btn-icon:hover { background: #9b2c2c; }
+
+

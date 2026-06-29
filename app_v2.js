@@ -1,5 +1,5 @@
 // --------------------------------------------------------------
-// Certificate Generator App Logic (Unified Version)
+// Certificate Generator App Logic (Unified Version v2)
 // --------------------------------------------------------------
 
 // ---------------------------------------------------------------
@@ -15,8 +15,9 @@ const CONFIG = {
   canvasHeight: 1131,
   name: { y: 520, font: '700 90px "Dancing Script", cursive', color: '#184551', align: 'center' },
   course: { y: 670, font: 'bold 28px Inter, sans-serif', color: '#000000', align: 'center' },
-  date: { x: 625, y: 707, font: '27px Inter, sans-serif', color: '#000000', align: 'center', letterSpacing: '1.5px' },
-  rank: { x: 885, y: 747, font: 'bold 28px Inter, sans-serif', color: '#d34b32', align: 'left' }
+  date:   { x: 625, y: 707, font: '27px Inter, sans-serif', color: '#000000', align: 'center', letterSpacing: '1.5px' },
+  datePD: { x: 627, y: 707, font: '27px Inter, sans-serif', color: '#000000', align: 'center', letterSpacing: '1.5px' },
+  rank: { x: 885, y: 749, font: 'bold 28px Inter, sans-serif', color: '#e55627', align: 'left' }
 };
 
 const templateCache = {};
@@ -212,6 +213,7 @@ function switchView(view) {
     singleWrapper.style.display = 'none';
     gridWrapper.style.display = 'grid';
     previewArea.style.alignItems = 'flex-start';
+    previewArea.style.overflowY = 'auto';
   } else {
     isGridView = false;
     btnSingle.classList.add('active');
@@ -220,6 +222,7 @@ function switchView(view) {
     gridWrapper.style.display = 'none';
     singleWrapper.style.display = 'block';
     previewArea.style.alignItems = 'center';
+    previewArea.style.overflowY = 'hidden';
   }
   refreshViews();
 }
@@ -532,36 +535,76 @@ function renderGrid() {
   if (!isFileLoaded || records.length === 0) return;
   gridWrapper.innerHTML = '';
 
-  // Thu nhỏ tỷ lệ 25% (400x282) thay vì 1600x1131 để không sập bộ nhớ trình duyệt
-  const scale = 0.25;
+  try {
+    const scale = 0.5;
 
-  filteredRecords.forEach((item, displayIndex) => {
-    const data = item.record;
-    const gridItem = document.createElement('div');
-    gridItem.className = 'grid-item';
+    // Single shared offscreen canvas for rendering (avoids GPU memory limits)
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = CONFIG.canvasWidth * scale;
+    offscreenCanvas.height = CONFIG.canvasHeight * scale;
+    const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 
-    const canvas = document.createElement('canvas');
-    canvas.width  = CONFIG.canvasWidth * scale;
-    canvas.height = CONFIG.canvasHeight * scale;
-    const ctx = canvas.getContext('2d');
-    
-    // Scale context trước khi đưa vào hàm render gốc
-    ctx.scale(scale, scale);
-    renderToContext(ctx, CONFIG.canvasWidth, CONFIG.canvasHeight, data);
+    // Use IntersectionObserver with the preview-area as root so lazy-loading
+    // works within the scrollable container rather than the full viewport.
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          const index = img.dataset.index;
+          if (!index) return;
+          
+          const data = filteredRecords[index].record;
+          
+          // Clear and redraw on the shared canvas
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          ctx.scale(scale, scale);
+          
+          renderToContext(ctx, CONFIG.canvasWidth, CONFIG.canvasHeight, data);
+          
+          // Extract as JPEG and assign to img element
+          img.src = offscreenCanvas.toDataURL('image/jpeg', 0.9);
+          
+          // Stop observing after render
+          obs.unobserve(img); 
+        }
+      });
+    }, { root: previewArea, rootMargin: '500px' });
 
-    const info = document.createElement('div');
-    info.className = 'grid-item-info';
+    filteredRecords.forEach((item, displayIndex) => {
+      const data = item.record;
+      const gridItem = document.createElement('div');
+      gridItem.className = 'grid-item';
 
-    const templateUrl = getTemplateUrlForCourse(data.Course);
-    const isAlt = templateUrl !== DEFAULT_TEMPLATE;
-    const templateTag = isAlt ? '<span class="grid-template-tag alt-tag">PD</span>' : '<span class="grid-template-tag">IC</span>';
-    
-    info.innerHTML = `${templateTag} ${displayIndex + 1}. ${data.Name || 'Unknown'}`;
+      const img = document.createElement('img');
+      img.dataset.index = displayIndex;
+      img.style.width = '100%';
+      img.style.height = 'auto';
+      img.style.display = 'block';
+      img.style.aspectRatio = '1600 / 1131';
+      img.style.backgroundColor = 'var(--bg-app)';
+      img.alt = '';
+      
+      observer.observe(img);
 
-    gridItem.appendChild(canvas);
-    gridItem.appendChild(info);
-    gridWrapper.appendChild(gridItem);
-  });
+      const info = document.createElement('div');
+      info.className = 'grid-item-info';
+
+      const templateUrl = getTemplateUrlForCourse(data.Course);
+      const isAlt = templateUrl !== DEFAULT_TEMPLATE;
+      const templateTag = isAlt ? '<span class="grid-template-tag alt-tag">PD</span>' : '<span class="grid-template-tag">IC</span>';
+      
+      info.innerHTML = `${templateTag} ${displayIndex + 1}. ${data.Name || 'Unknown'}`;
+
+      gridItem.appendChild(img);
+      gridItem.appendChild(info);
+      gridWrapper.appendChild(gridItem);
+    });
+
+  } catch (err) {
+    gridWrapper.innerHTML = `<div style="padding:20px;color:red;">Error rendering grid: ${err.message}</div>`;
+    console.error(err);
+  }
 }
 
 function renderToContext(ctx, w, h, data) {
@@ -591,9 +634,10 @@ function renderToContext(ctx, w, h, data) {
     ctx.fillText(data.Course, centerX, CONFIG.course.y);
   }
   if (data.Date) {
-    ctx.font = CONFIG.date.font; ctx.fillStyle = CONFIG.date.color; ctx.textAlign = CONFIG.date.align;
-    if ('letterSpacing' in ctx && CONFIG.date.letterSpacing) ctx.letterSpacing = CONFIG.date.letterSpacing;
-    ctx.fillText(data.Date, CONFIG.date.x, CONFIG.date.y);
+    const dateCfg = (templateUrl !== DEFAULT_TEMPLATE) ? CONFIG.datePD : CONFIG.date;
+    ctx.font = dateCfg.font; ctx.fillStyle = dateCfg.color; ctx.textAlign = dateCfg.align;
+    if ('letterSpacing' in ctx && dateCfg.letterSpacing) ctx.letterSpacing = dateCfg.letterSpacing;
+    ctx.fillText(data.Date, dateCfg.x, dateCfg.y);
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   }
   if (data.Rank) {

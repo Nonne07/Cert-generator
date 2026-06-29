@@ -14,6 +14,10 @@
   
   <!-- PapaParse for CSV parsing -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- JSZip for ZIP compression -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <!-- jsPDF for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -21,13 +25,23 @@
     <header class="topbar">
       <div class="logo">
         <strong>CertGen</strong>
+        <span class="template-badge" id="template-badge">🖼 Template.png</span>
       </div>
       <div class="topbar-actions">
         <button class="icon-btn theme-toggle" id="theme-toggle" title="Toggle Theme">🌓</button>
-        <button class="action-btn primary" id="download-btn">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-          Download
-        </button>
+        <div class="dropdown" id="download-dropdown">
+          <button class="action-btn primary dropdown-toggle" id="download-btn">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+            Export Options <span class="arrow">▼</span>
+          </button>
+          <div class="dropdown-menu" id="download-menu">
+            <a href="#" id="download-png-current">Download PNG (Current)</a>
+            <a href="#" id="download-pdf-current">Download PDF (Current)</a>
+            <hr class="dropdown-divider csv-only" style="display:none;" />
+            <a href="#" id="download-zip-all" class="csv-only" style="display:none;">Download ZIP (All PNGs)</a>
+            <a href="#" id="download-pdf-all" class="csv-only" style="display:none;">Download PDF (All Multi-page)</a>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -97,23 +111,88 @@
         </div>
       </aside>
 
-      <!-- Right Preview Area -->
-      <main class="preview-area" id="preview-area">
-        <!-- Single Preview -->
-        <div class="preview-wrapper" id="single-view-wrapper">
-          <div class="certificate-canvas-container">
-            <canvas id="preview-canvas" width="1600" height="1131"></canvas>
+      <!-- Right Workspace Container -->
+      <div class="workspace-right-container">
+        <!-- Right Preview Area -->
+        <main class="preview-area" id="preview-area">
+          <!-- Single Preview -->
+          <div class="preview-wrapper" id="single-view-wrapper">
+            <div class="certificate-canvas-container">
+              <canvas id="preview-canvas" width="1600" height="1131"></canvas>
+            </div>
+          </div>
+          
+          <!-- Grid Preview -->
+          <div class="grid-wrapper" id="grid-view-wrapper">
+            <!-- Populated by JS -->
+          </div>
+        </main>
+
+        <!-- Bottom Data Table Drawer -->
+        <div class="table-drawer collapsed" id="table-drawer" style="display: none;">
+          <div class="drawer-header">
+            <div class="drawer-title-group">
+              <span class="drawer-icon">📊</span>
+              <strong>Data Table Editor</strong>
+              <span class="record-badge" id="table-record-count">0 records</span>
+            </div>
+            <div class="drawer-actions">
+              <button class="secondary-btn btn-sm danger-btn" id="btn-table-clear" title="Clear All History">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                Clear History
+              </button>
+              <button class="secondary-btn btn-sm" id="btn-table-add">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                Add Student
+              </button>
+              <button class="icon-btn toggle-drawer-btn" id="btn-table-toggle" title="Toggle Table">▲</button>
+            </div>
+          </div>
+          <div class="drawer-body">
+            <div class="table-search-container">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="table-search-input" placeholder="Search student by name (fuzzy / diacritics-insensitive)..." />
+              <button class="clear-search-btn" id="btn-search-clear" title="Clear Search" style="display: none;">✕</button>
+            </div>
+            <div class="table-scroll-container">
+              <table class="data-table" id="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px; text-align: center;">#</th>
+                    <th>Student Name</th>
+                    <th>Course / Program</th>
+                    <th>Date</th>
+                    <th>Classification</th>
+                    <th style="width: 80px; text-align: center;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="data-table-body">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-        
-        <!-- Grid Preview -->
-        <div class="grid-wrapper" id="grid-view-wrapper">
-          <!-- Populated by JS -->
-        </div>
-      </main>
+      </div>
     </div>
   </div>
 
-  <script src="./app.js"></script>
+  <!-- Progress Modal / Loading Overlay -->
+  <div class="progress-modal-overlay" id="progress-modal" style="display: none;">
+    <div class="progress-modal-content">
+      <div class="progress-spinner"></div>
+      <h3 id="progress-title">Generating Files</h3>
+      <p id="progress-status">Preparing to generate...</p>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+      </div>
+      <button class="secondary-btn" id="btn-progress-cancel" style="margin-top: 15px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Cache buster script -->
+  <script>
+    document.write('<script src="./app_v2.js?v=' + new Date().getTime() + '"><\/script>');
+  </script>
 </body>
 </html>
