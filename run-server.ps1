@@ -1,6 +1,6 @@
 # Simple PowerShell Static Web Server for Cert-generator
-$port = 8080
-$path = "c:\Users\Sento Eclipsen\Downloads\Cert-generator"
+$port = 8081
+$path = $PSScriptRoot
 
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
